@@ -1,3 +1,29 @@
+# --- Claude Specific Files ---
+# Custom instruction or system prompt files (if they contain sensitive logic)
+claude.md
+CLAUDE.md
+.claude/
+custom_instructions.txt
+
+# --- API & Environment Keys ---
+# Never commit your Anthropic API keys
+.env
+.env.local
+.env.auth
+anthropic_api_key.txt
+
+# --- Tool-Specific (e.g., Claude Engineer or MCP) ---
+# Project-specific history or context files
+.claude_history
+.claude_context.json
+claude_config.json
+mcp_config.json
+
+# --- Claude Desktop (if syncing config folders) ---
+# Prevents syncing local desktop app settings
+claude_desktop_config.json
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
