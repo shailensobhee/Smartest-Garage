@@ -167,17 +167,51 @@ cover:
       }
       return COVER_CLOSED;
     open_action:
-      - switch.turn_on: door_relay
-      - delay: 100ms
-      - switch.turn_off: door_relay
+      - cc1101.begin_tx: cc1101_transceiver
+      - remote_transmitter.transmit_rc_switch_raw:
+          transmitter_id: cc1101_tx
+          code: !secret garage_rf_code
+          # ── FILL IN AFTER LEARN STEP ──────────────────────────
+          # Run the learn workflow (see docs/ha-automations/), press
+          # your remote while watching ESPHome logs, then copy the
+          # logged protocol and code values here and into secrets.yaml.
+          protocol:
+            pulse_length: 420
+            sync: [1, 31]
+            zero: [1, 3]
+            one: [3, 1]
+            inverted: false
+          repeat:
+            times: 10
+      - cc1101.end_tx: cc1101_transceiver
     close_action:
-      - switch.turn_on: door_relay
-      - delay: 100ms
-      - switch.turn_off: door_relay
+      - cc1101.begin_tx: cc1101_transceiver
+      - remote_transmitter.transmit_rc_switch_raw:
+          transmitter_id: cc1101_tx
+          code: !secret garage_rf_code
+          protocol:
+            pulse_length: 420
+            sync: [1, 31]
+            zero: [1, 3]
+            one: [3, 1]
+            inverted: false
+          repeat:
+            times: 10
+      - cc1101.end_tx: cc1101_transceiver
     stop_action:
-      - switch.turn_on: door_relay
-      - delay: 100ms
-      - switch.turn_off: door_relay
+      - cc1101.begin_tx: cc1101_transceiver
+      - remote_transmitter.transmit_rc_switch_raw:
+          transmitter_id: cc1101_tx
+          code: !secret garage_rf_code
+          protocol:
+            pulse_length: 420
+            sync: [1, 31]
+            zero: [1, 3]
+            one: [3, 1]
+            inverted: false
+          repeat:
+            times: 10
+      - cc1101.end_tx: cc1101_transceiver
 
 # ─────────────────────────────────────────────────────────────
 switch:
