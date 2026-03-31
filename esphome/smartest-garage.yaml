@@ -1,5 +1,9 @@
 # esphome/smartest-garage.yaml
 
+external_components:
+  - source: github://gabest11/esphome-cc1101@main
+    components: [cc1101]
+
 substitutions:
   device_name: smartest-garage
   friendly_name: Smartest Garage
@@ -20,7 +24,8 @@ substitutions:
   cc1101_miso_pin: GPIO11
   cc1101_clk_pin: GPIO12
   cc1101_cs_pin: GPIO13
-  cc1101_gdo0_pin: GPIO14
+  cc1101_gdo0_pin: GPIO20     # TX — connected to remote_transmitter (avoid GPIO14=JTAG on C6)
+  cc1101_gdo2_pin: GPIO21     # RX — connected to remote_receiver (receive/learn)
 
   # ── LD2410 UART (disabled until sensor arrives) ──────────
   ld2410_rx_pin: GPIO16       # ESP RX ← sensor TX
@@ -61,7 +66,51 @@ logger:
 safe_mode:
 
 # ─────────────────────────────────────────────────────────────
+spi:
+  - id: cc1101_spi
+    clk_pin: ${cc1101_clk_pin}
+    mosi_pin: ${cc1101_mosi_pin}
+    miso_pin: ${cc1101_miso_pin}
+
+# ─────────────────────────────────────────────────────────────
+# CC1101 transceiver — integrates with remote_transmitter / remote_receiver
+# Learn workflow: flash device, open ESPHome logs, press your remote.
+# The remote_receiver will automatically dump the captured code + protocol.
+# Copy the logged binary code into esphome/secrets.yaml (garage_rf_code)
+# and update the protocol block in the cover open/close/stop actions below.
+remote_transmitter:
+  - id: cc1101_tx
+    pin:
+      number: ${cc1101_gdo0_pin}
+      allow_other_uses: true    # shared with cc1101 sensor component — same physical pin
+    carrier_duty_percent: 100%
+
+remote_receiver:
+  pin: ${cc1101_gdo2_pin}
+  dump:
+    - rc_switch
+  tolerance: 50%
+  filter: 250us
+  idle: 4ms
+
+# ─────────────────────────────────────────────────────────────
 sensor:
+  - platform: cc1101
+    id: cc1101_transceiver
+    cs_pin: ${cc1101_cs_pin}
+    gdo0:
+      number: ${cc1101_gdo0_pin}
+      allow_other_uses: true    # shared with remote_transmitter — same physical pin
+    # gdo2 intentionally omitted — remote_receiver handles GDO2 directly
+    bandwidth: 200
+    frequency: !secret garage_rf_frequency
+    rssi:
+      name: "CC1101 RSSI"
+      internal: true
+    lqi:
+      name: "CC1101 LQI"
+      internal: true
+
   - platform: ultrasonic
     trigger_pin: ${ultrasonic_trigger_pin}
     echo_pin: ${ultrasonic_echo_pin}
