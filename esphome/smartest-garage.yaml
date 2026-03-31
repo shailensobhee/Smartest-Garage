@@ -236,3 +236,44 @@ script:
     then:
       - delay: 2min
       - switch.turn_off: garage_light
+
+# ─────────────────────────────────────────────────────────────
+# HLK-LD2410 mmWave sensor — uncomment when hardware arrives
+# Wire: sensor TX → ESP GPIO16 (ld2410_rx_pin), sensor RX → ESP GPIO17 (ld2410_tx_pin), 3.3 V power
+#
+# uart:
+#   - id: ld2410_uart
+#     tx_pin: ${ld2410_tx_pin}
+#     rx_pin: ${ld2410_rx_pin}
+#     baud_rate: 256000
+#     parity: NONE
+#     stop_bits: 1
+#
+# ld2410:
+#   id: ld2410_radar
+#   uart_id: ld2410_uart
+#
+# binary_sensor:   ← add these entries to the existing binary_sensor block
+#   - platform: ld2410
+#     has_target:
+#       name: "LD2410 Presence"
+#       id: ld2410_presence
+#     has_moving_target:
+#       name: "LD2410 Motion"
+#     has_still_target:
+#       name: "LD2410 Still Presence"
+#
+# sensor:          ← add these entries to the existing sensor block
+#   - platform: ld2410
+#     moving_distance:
+#       name: "LD2410 Moving Distance"
+#     still_distance:
+#       name: "LD2410 Still Distance"
+#     moving_energy:
+#       name: "LD2410 Moving Energy"
+#     still_energy:
+#       name: "LD2410 Still Energy"
+#
+# To combine with HC-SR04 for car_present, change the car_present lambda to:
+#   return id(garage_distance).state < ${car_presence_threshold}
+#          || id(ld2410_presence).state;
