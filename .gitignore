@@ -1,3 +1,7 @@
+#Project-specific
+Smartest-Garage.code-workspace
+.worktrees/
+
 # --- Claude Specific Files ---
 # Custom instruction or system prompt files (if they contain sensitive logic)
 claude.md
@@ -231,3 +235,18 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
+
+tests/example.spec.js
+.gitignore
+playwright.config.js
+package.json
+package-lock.json
+.github/workflows/playwright.yml

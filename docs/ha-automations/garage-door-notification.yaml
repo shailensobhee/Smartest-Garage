@@ -1,0 +1,26 @@
+# Paste this into Home Assistant:
+# Settings → Automations → Create Automation → ⋮ → Edit as YAML
+#
+# Replace "mobile_app_YOUR_PHONE" with your actual notify service.
+# Find it in: Developer Tools → Services → search "notify"
+
+alias: Garage door open after 10pm
+description: Send phone notification if garage door is still open after 10pm
+trigger:
+  - platform: state
+    entity_id: cover.garage_door
+    to: open
+  - platform: time
+    at: "22:00:00"
+condition:
+  - condition: state
+    entity_id: cover.garage_door
+    state: open
+  - condition: time
+    after: "22:00:00"
+action:
+  - service: notify.mobile_app_YOUR_PHONE
+    data:
+      title: "Garage Alert"
+      message: "Garage door is open — it's past 10pm."
+mode: single

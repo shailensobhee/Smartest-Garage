@@ -1,0 +1,279 @@
+# esphome/smartest-garage.yaml
+
+external_components:
+  - source: github://gabest11/esphome-cc1101@main
+    components: [cc1101]
+
+substitutions:
+  device_name: smartest-garage
+  friendly_name: Smartest Garage
+
+  # ── HC-SR04 ──────────────────────────────────────────────
+  ultrasonic_trigger_pin: GPIO4
+  ultrasonic_echo_pin: GPIO5
+
+  # ── Reed switch ──────────────────────────────────────────
+  door_sensor_pin: GPIO6
+
+  # ── Relays ───────────────────────────────────────────────
+  door_relay_pin: GPIO7       # Optional hardwired backup
+  light_relay_pin: GPIO8
+
+  # ── CC1101 SPI ───────────────────────────────────────────
+  cc1101_mosi_pin: GPIO10
+  cc1101_miso_pin: GPIO11
+  cc1101_clk_pin: GPIO12
+  cc1101_cs_pin: GPIO13
+  cc1101_gdo0_pin: GPIO20     # TX — connected to remote_transmitter (avoid GPIO14=JTAG on C6)
+  cc1101_gdo2_pin: GPIO21     # RX — connected to remote_receiver (receive/learn)
+
+  # ── LD2410 UART (disabled until sensor arrives) ──────────
+  ld2410_rx_pin: GPIO16       # ESP RX ← sensor TX
+  ld2410_tx_pin: GPIO17       # ESP TX → sensor RX
+
+  # ── Thresholds ───────────────────────────────────────────
+  car_presence_threshold: "200"   # cm; car present when distance < this
+
+# ─────────────────────────────────────────────────────────────
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32-c6-devkitc-1
+  framework:
+    type: esp-idf
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name} Fallback"
+    password: !secret ota_password
+
+captive_portal:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+logger:
+
+safe_mode:
+
+# ─────────────────────────────────────────────────────────────
+spi:
+  - id: cc1101_spi
+    clk_pin: ${cc1101_clk_pin}
+    mosi_pin: ${cc1101_mosi_pin}
+    miso_pin: ${cc1101_miso_pin}
+
+# ─────────────────────────────────────────────────────────────
+# CC1101 transceiver — integrates with remote_transmitter / remote_receiver
+# Learn workflow: flash device, open ESPHome logs, press your remote.
+# The remote_receiver will automatically dump the captured code + protocol.
+# Copy the logged binary code into esphome/secrets.yaml (garage_rf_code)
+# and update the protocol block in the cover open/close/stop actions below.
+remote_transmitter:
+  - id: cc1101_tx
+    pin:
+      number: ${cc1101_gdo0_pin}
+      allow_other_uses: true    # shared with cc1101 sensor component — same physical pin
+    carrier_duty_percent: 100%
+
+remote_receiver:
+  pin: ${cc1101_gdo2_pin}
+  dump:
+    - rc_switch
+  tolerance: 50%
+  filter: 250us
+  idle: 4ms
+
+# ─────────────────────────────────────────────────────────────
+sensor:
+  - platform: cc1101
+    id: cc1101_transceiver
+    cs_pin: ${cc1101_cs_pin}
+    gdo0:
+      number: ${cc1101_gdo0_pin}
+      allow_other_uses: true    # shared with remote_transmitter — same physical pin
+    # gdo2 intentionally omitted — remote_receiver handles GDO2 directly
+    bandwidth: 200
+    frequency: !secret garage_rf_frequency
+    rssi:
+      name: "CC1101 RSSI"
+      internal: true
+    lqi:
+      name: "CC1101 LQI"
+      internal: true
+
+  - platform: ultrasonic
+    trigger_pin: ${ultrasonic_trigger_pin}
+    echo_pin: ${ultrasonic_echo_pin}
+    name: "Garage Distance"
+    id: garage_distance
+    update_interval: 500ms
+    unit_of_measurement: cm
+    filters:
+      - median:
+          window_size: 5
+          send_every: 3
+          send_first_at: 1
+
+# ─────────────────────────────────────────────────────────────
+binary_sensor:
+  - platform: template
+    name: "Car Present"
+    id: car_present
+    device_class: presence
+    lambda: |-
+      if (id(garage_distance).state < ${car_presence_threshold}) {
+        return true;
+      }
+      return false;
+    on_press:
+      - switch.turn_on: garage_light
+      - script.stop: light_off_timer    # Cancel any pending off-timer
+    on_release:
+      - script.execute: light_off_timer # Start 2-min countdown
+
+  - platform: gpio
+    pin:
+      number: ${door_sensor_pin}
+      mode:
+        input: true
+        pullup: true
+    name: "Door Open"
+    id: door_open
+    internal: true
+    device_class: garage_door
+    filters:
+      - delayed_on: 100ms
+      - delayed_off: 100ms
+
+# ─────────────────────────────────────────────────────────────
+cover:
+  - platform: template
+    name: "Garage Door"
+    id: garage_door
+    device_class: garage
+    lambda: |-
+      if (id(door_open).state) {
+        return COVER_OPEN;
+      }
+      return COVER_CLOSED;
+    open_action:
+      - cc1101.begin_tx: cc1101_transceiver
+      - remote_transmitter.transmit_rc_switch_raw:
+          transmitter_id: cc1101_tx
+          code: !secret garage_rf_code
+          # ── FILL IN AFTER LEARN STEP ──────────────────────────
+          # Run the learn workflow (see docs/ha-automations/), press
+          # your remote while watching ESPHome logs, then copy the
+          # logged protocol and code values here and into secrets.yaml.
+          protocol:
+            pulse_length: 420
+            sync: [1, 31]
+            zero: [1, 3]
+            one: [3, 1]
+            inverted: false
+          repeat:
+            times: 10
+      - cc1101.end_tx: cc1101_transceiver
+    close_action:
+      - cc1101.begin_tx: cc1101_transceiver
+      - remote_transmitter.transmit_rc_switch_raw:
+          transmitter_id: cc1101_tx
+          code: !secret garage_rf_code
+          protocol:
+            pulse_length: 420
+            sync: [1, 31]
+            zero: [1, 3]
+            one: [3, 1]
+            inverted: false
+          repeat:
+            times: 10
+      - cc1101.end_tx: cc1101_transceiver
+    stop_action:
+      - cc1101.begin_tx: cc1101_transceiver
+      - remote_transmitter.transmit_rc_switch_raw:
+          transmitter_id: cc1101_tx
+          code: !secret garage_rf_code
+          protocol:
+            pulse_length: 420
+            sync: [1, 31]
+            zero: [1, 3]
+            one: [3, 1]
+            inverted: false
+          repeat:
+            times: 10
+      - cc1101.end_tx: cc1101_transceiver
+
+# ─────────────────────────────────────────────────────────────
+switch:
+  - platform: gpio
+    pin: ${door_relay_pin}
+    name: "Door Relay"
+    id: door_relay
+    internal: true
+    restore_mode: ALWAYS_OFF
+
+  - platform: gpio
+    pin: ${light_relay_pin}
+    name: "Garage Light"
+    id: garage_light
+    device_class: switch
+    restore_mode: ALWAYS_OFF
+
+# ─────────────────────────────────────────────────────────────
+script:
+  - id: light_off_timer
+    mode: restart     # Resets the 2-min countdown if triggered again
+    then:
+      - delay: 2min
+      - switch.turn_off: garage_light
+
+# ─────────────────────────────────────────────────────────────
+# HLK-LD2410 mmWave sensor — uncomment when hardware arrives
+# Wire: sensor TX → ESP GPIO16 (ld2410_rx_pin), sensor RX → ESP GPIO17 (ld2410_tx_pin), 3.3 V power
+#
+# uart:
+#   - id: ld2410_uart
+#     tx_pin: ${ld2410_tx_pin}
+#     rx_pin: ${ld2410_rx_pin}
+#     baud_rate: 256000
+#     parity: NONE
+#     stop_bits: 1
+#
+# ld2410:
+#   id: ld2410_radar
+#   uart_id: ld2410_uart
+#
+# binary_sensor:   ← add these entries to the existing binary_sensor block
+#   - platform: ld2410
+#     has_target:
+#       name: "LD2410 Presence"
+#       id: ld2410_presence
+#     has_moving_target:
+#       name: "LD2410 Motion"
+#     has_still_target:
+#       name: "LD2410 Still Presence"
+#
+# sensor:          ← add these entries to the existing sensor block
+#   - platform: ld2410
+#     moving_distance:
+#       name: "LD2410 Moving Distance"
+#     still_distance:
+#       name: "LD2410 Still Distance"
+#     moving_energy:
+#       name: "LD2410 Moving Energy"
+#     still_energy:
+#       name: "LD2410 Still Energy"
+#
+# To combine with HC-SR04 for car_present, change the car_present lambda to:
+#   return id(garage_distance).state < ${car_presence_threshold}
+#          || id(ld2410_presence).state;
