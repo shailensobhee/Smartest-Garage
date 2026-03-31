@@ -59,3 +59,30 @@ ota:
 logger:
 
 safe_mode:
+
+# ─────────────────────────────────────────────────────────────
+sensor:
+  - platform: ultrasonic
+    trigger_pin: ${ultrasonic_trigger_pin}
+    echo_pin: ${ultrasonic_echo_pin}
+    name: "Garage Distance"
+    id: garage_distance
+    update_interval: 500ms
+    unit_of_measurement: cm
+    filters:
+      - median:
+          window_size: 5
+          send_every: 3
+          send_first_at: 1
+
+# ─────────────────────────────────────────────────────────────
+binary_sensor:
+  - platform: template
+    name: "Car Present"
+    id: car_present
+    device_class: presence
+    lambda: |-
+      if (id(garage_distance).state < ${car_presence_threshold}) {
+        return true;
+      }
+      return false;
