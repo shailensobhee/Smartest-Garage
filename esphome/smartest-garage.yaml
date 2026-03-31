@@ -1,0 +1,61 @@
+# esphome/smartest-garage.yaml
+
+substitutions:
+  device_name: smartest-garage
+  friendly_name: Smartest Garage
+
+  # ── HC-SR04 ──────────────────────────────────────────────
+  ultrasonic_trigger_pin: GPIO4
+  ultrasonic_echo_pin: GPIO5
+
+  # ── Reed switch ──────────────────────────────────────────
+  door_sensor_pin: GPIO6
+
+  # ── Relays ───────────────────────────────────────────────
+  door_relay_pin: GPIO7       # Optional hardwired backup
+  light_relay_pin: GPIO8
+
+  # ── CC1101 SPI ───────────────────────────────────────────
+  cc1101_mosi_pin: GPIO10
+  cc1101_miso_pin: GPIO11
+  cc1101_clk_pin: GPIO12
+  cc1101_cs_pin: GPIO13
+  cc1101_gdo0_pin: GPIO14
+
+  # ── LD2410 UART (disabled until sensor arrives) ──────────
+  ld2410_rx_pin: GPIO16       # ESP RX ← sensor TX
+  ld2410_tx_pin: GPIO17       # ESP TX → sensor RX
+
+  # ── Thresholds ───────────────────────────────────────────
+  car_presence_threshold: "200"   # cm; car present when distance < this
+
+# ─────────────────────────────────────────────────────────────
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32-c6-devkitc-1
+  framework:
+    type: esp-idf
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name} Fallback"
+    password: !secret ota_password
+
+captive_portal:
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+logger:
+
+safe_mode:
