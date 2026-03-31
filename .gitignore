@@ -1,6 +1,7 @@
 #Project-specific
 Smartest-Garage.code-workspace
 .worktrees/
+esphome/secrets.yaml
 
 # --- Claude Specific Files ---
 # Custom instruction or system prompt files (if they contain sensitive logic)
