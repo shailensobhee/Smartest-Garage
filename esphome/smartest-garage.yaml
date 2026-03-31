@@ -86,3 +86,50 @@ binary_sensor:
         return true;
       }
       return false;
+
+  - platform: gpio
+    pin:
+      number: ${door_sensor_pin}
+      mode:
+        input: true
+        pullup: true
+    name: "Door Open"
+    id: door_open
+    internal: true
+    device_class: garage_door
+    filters:
+      - delayed_on: 100ms
+      - delayed_off: 100ms
+
+# ─────────────────────────────────────────────────────────────
+cover:
+  - platform: template
+    name: "Garage Door"
+    id: garage_door
+    device_class: garage
+    lambda: |-
+      if (id(door_open).state) {
+        return COVER_OPEN;
+      }
+      return COVER_CLOSED;
+    open_action:
+      - switch.turn_on: door_relay
+      - delay: 100ms
+      - switch.turn_off: door_relay
+    close_action:
+      - switch.turn_on: door_relay
+      - delay: 100ms
+      - switch.turn_off: door_relay
+    stop_action:
+      - switch.turn_on: door_relay
+      - delay: 100ms
+      - switch.turn_off: door_relay
+
+# ─────────────────────────────────────────────────────────────
+switch:
+  - platform: gpio
+    pin: ${door_relay_pin}
+    name: "Door Relay"
+    id: door_relay
+    internal: true
+    restore_mode: ALWAYS_OFF
