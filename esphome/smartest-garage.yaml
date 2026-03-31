@@ -86,6 +86,11 @@ binary_sensor:
         return true;
       }
       return false;
+    on_press:
+      - switch.turn_on: garage_light
+      - script.stop: light_off_timer    # Cancel any pending off-timer
+    on_release:
+      - script.execute: light_off_timer # Start 2-min countdown
 
   - platform: gpio
     pin:
@@ -133,3 +138,18 @@ switch:
     id: door_relay
     internal: true
     restore_mode: ALWAYS_OFF
+
+  - platform: gpio
+    pin: ${light_relay_pin}
+    name: "Garage Light"
+    id: garage_light
+    device_class: switch
+    restore_mode: ALWAYS_OFF
+
+# ─────────────────────────────────────────────────────────────
+script:
+  - id: light_off_timer
+    mode: restart     # Resets the 2-min countdown if triggered again
+    then:
+      - delay: 2min
+      - switch.turn_off: garage_light
