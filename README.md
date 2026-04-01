@@ -139,6 +139,7 @@ esphome run esphome/smartest-garage.yaml
 >   pip install fatfs==0.1.2
 >   FATFS_DIR=$(python3 -c "import fatfs, os; print(os.path.dirname(fatfs.__file__))")
 >   PIO_FATFS=$(ls -d ~/.platformio/penv/lib/python3.*/site-packages/fatfs)
+>   cp $PIO_FATFS/__init__.py $FATFS_DIR/
 >   cp $PIO_FATFS/partition_extended.py $FATFS_DIR/
 >   cp $PIO_FATFS/esp32_wl.py $FATFS_DIR/
 >   ```
