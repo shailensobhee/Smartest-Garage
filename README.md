@@ -38,15 +38,15 @@ The system currently manages car presence detection, door state monitoring, and 
                           │                                                 │    (door frame)
                           │  GPIO16 RX ◄────────────────────────────────────┤─── HLK-LD2410  [coming soon]
                           │  GPIO17 TX ─────────────────────────────────────┤    mmWave movement sensor
-                          │                                           (UART) │
+                          │                                          (UART) │
                           │                                                 │
-  OUTPUTS ───────────────┤                                                 │
+  OUTPUTS ────────────────┤                                                 │
                           │              ┌──────────────────────────────────┤
-                          │  GPIO8 ──────► 3V Optocoupler Relay       │─── Garage Light
+                          │  GPIO8 ──────► 3V Optocoupler Relay             │─── Garage Light
                           │              │  (HIGH trigger, NO contact)      │    AC 250V / 10A
                           │              └──────────────────────────────────┤
                           │              ┌──────────────────────────────────┤
-                          │  GPIO7 ──────► 3V Optocoupler Relay       │─── Garage Door Opener
+                          │  GPIO7 ──────► 3V Optocoupler Relay             │─── Garage Door Opener
                           │              │  (HIGH trigger, NO contact)      │    wall button terminals
                           │              │  [hardwired backup]              │    (backup trigger)
                           │              └──────────────────────────────────┤
@@ -59,7 +59,7 @@ The system currently manages car presence detection, door state monitoring, and 
                           │  GPIO20 GDO0 (TX) ─────────────────────────────►│
                           │  GPIO21 GDO2 (RX) ◄─────────────────────────────┤─── 433 MHz antenna
                           │                                                 │    (learn + transmit
-                          │                                                 │     garage door code)
+                          │                                                 │    garage door code)
                           └─────────────────────────────────────────────────┘
 ```
 
