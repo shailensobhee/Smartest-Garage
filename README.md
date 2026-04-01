@@ -1,5 +1,7 @@
 # Smartest-Garage
-A SmartHome, sensor-driven project to monitor and control a garage using an ESP32-C6 and Home Assistant.
+Smartest Garage is a SmartHome, sensor-driven project to monitor and control a garage using an ESP32-C6 and Home Assistant. At the heart is an ESP32-C6 based smart garage controller that integrates with Home Assistant via the ESPHome native API. The device handles car presence detection, garage door state monitoring, RF-based door control (433 MHz fixed code via CC1101), and light automation. A future mmWave sensor (HLK-LD2410) will replace or supplement the ultrasonic sensor for presence detection.
+
+`Plan` : The controller interacts with a local/Private AI (local LLM gateway) for smart decisions: example, the car is on the way back home -> trigger opening the garage. The AI plugs into Google Maps for location and movement intent information. The garage can also be controlled by voice. 
 
 ---
 
@@ -7,31 +9,31 @@ A SmartHome, sensor-driven project to monitor and control a garage using an ESP3
 
 ```
                           ┌─────────────────────────────────────────────────┐
-                          │              Home Assistant (WiFi)               │
-                          │                                                  │
-                          │  • Garage Door cover  (open/close/state)         │
-                          │  • Garage Door Position  (0–100%)                │
-                          │  • Car Present  (yes/no)                         │
-                          │  • Garage Light switch                           │
-                          │  • 10 pm open-door phone notification            │
+                          │              Home Assistant (WiFi6)             │
+                          │                                                 │
+                          │  • Garage Door cover  (open/close/state)        │
+                          │  • Garage Door Position  (0–100%)               │
+                          │  • Car Present  (yes/no)                        │
+                          │  • Garage Light automation                      │
+                          │  • 10 pm open-door Smart notification           │
                           └────────────────────┬────────────────────────────┘
                                                │  ESPHome Native Encrypted API
-                                               │  (WiFi)
+                                               │  (WiFi6)
                           ┌────────────────────▼────────────────────────────┐
-                          │                                                  │
-                          │               ESP32-C6 DevKitC-1                │
-                          │                  (ESPHome)                       │
-                          │                                                  │
+                          │                                                 │
+                          │     ESP32-C6 DevKitC-1 (WiFi6/Thread/Matter)    │
+                          │                  (ESPHome)                      │
+                          │                                                 │
        ┌──────────────────┤  GPIO4  TRIG ◄──────────────────────────────────┤──┐
        │                  │  GPIO5  ECHO ──────────────────────────────────►│  │  HC-SR04 #1
-       │   Door           │                                                  │  │  Door Position
-       │   Position       │                                                 ─┘  │  (0–100%)
+       │   Door           │                                                 │  │  Door Position
+       │   Position       │                                                ─┘  │  (0–100%)
        │   (0–100%)       ├──────────────────────────────────────────────────  │
        │                  │  GPIO22 TRIG ◄──────────────────────────────────┐  │
        │                  │  GPIO23 ECHO ──────────────────────────────────►│  │  HC-SR04 #2
-       │                  │                                                  │  │  Car Presence
-       │                  │                                             Ceiling  │  (ceiling mount)
-       │                  │                                                  │──┘
+       │                  │                                                 │  │  Car Presence
+       │                  │                                            Ceiling │  (ceiling mount)
+       │                  │                                                 │──┘
        │                  │
        │                  │  GPIO6  ◄── Reed Switch + Magnet ─────────────── Door frame
        │                  │             (door open/closed)
@@ -56,7 +58,7 @@ A SmartHome, sensor-driven project to monitor and control a garage using an ESP3
        │                  │  GPIO17 TX ──►│─────────────────────────────── HLK-LD2410
        │                  │               │                                 mmWave sensor
        │                  │          (UART)                                 (movement detection)
-       │                  │          [coming soon]                          [coming soon]
+       │                  │                                  
        │                  │
        └──────────────────┘
 ```
