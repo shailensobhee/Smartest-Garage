@@ -1,5 +1,7 @@
 # Smartest-Garage
-Smartest Garage is a SmartHome, sensor-driven project to monitor and control a garage using an ESP32-C6 and Home Assistant. At the heart is an ESP32-C6 based smart garage controller that integrates with Home Assistant via the ESPHome native API. The device handles car presence detection, garage door state monitoring, RF-based door control (433 MHz fixed code via CC1101), and light automation. A future mmWave sensor (HLK-LD2410) will replace or supplement the ultrasonic sensor for presence detection.
+Smartest Garage is a sensor-driven automation project designed to monitor and control a garage. Centered on an ESP32-C6, the controller integrates seamlessly with Home Assistant via the ESPHome native API.
+
+The system currently manages car presence detection, door state monitoring, and light automation, alongside RF-based control (433 MHz via CC1101). An mmWave sensor (HLK-LD2410) - a specialized micro movement sensor - supplements the ultrasonic sensor for enhanced presence tracking.
 
 `Plan` : The controller interacts with a local/Private AI (local LLM gateway) for smart decisions: example, the car is on the way back home -> trigger opening the garage. The AI plugs into Google Maps for location and movement intent information. The garage can also be controlled by voice. 
 
