@@ -118,7 +118,7 @@ Door closes  AND
 
 ```bash
 # 1. Install dependencies
-pip install esphome littlefs-python
+pip install esphome littlefs-python esptool
 
 # 2. Fill in your credentials
 cp esphome/secrets.yaml.example esphome/secrets.yaml   # edit with your WiFi, AP, API key, OTA password
@@ -130,6 +130,6 @@ esphome run esphome/smartest-garage.yaml
 # 4. Accept the device in Home Assistant → Settings → Devices & Services
 ```
 
-> **Troubleshooting:** If you see `ModuleNotFoundError: No module named 'littlefs'` during compile, run `pip install littlefs-python`.
+> **Troubleshooting:** If you see `ModuleNotFoundError: No module named 'littlefs'` or `No module named 'esptool'` during compile, run `pip install littlefs-python esptool` in the active Python environment used by ESPHome.
 
 See [`docs/ha-automations/garage-door-notification.yaml`](docs/ha-automations/garage-door-notification.yaml) for the 10 pm open-door notification automation.
