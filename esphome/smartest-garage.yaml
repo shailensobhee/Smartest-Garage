@@ -8,9 +8,13 @@ substitutions:
   device_name: smartest-garage
   friendly_name: Smartest Garage
 
-  # ── HC-SR04 ──────────────────────────────────────────────
+  # ── HC-SR04 #1 — door position ───────────────────────────
   ultrasonic_trigger_pin: GPIO4
   ultrasonic_echo_pin: GPIO5
+
+  # ── HC-SR04 #2 — car presence (ceiling mount, pointing down) ─
+  car_sensor_trigger_pin: GPIO22
+  car_sensor_echo_pin: GPIO23
 
   # ── Reed switch ──────────────────────────────────────────
   door_sensor_pin: GPIO6
@@ -31,8 +35,14 @@ substitutions:
   ld2410_rx_pin: GPIO16       # ESP RX ← sensor TX
   ld2410_tx_pin: GPIO17       # ESP TX → sensor RX
 
-  # ── Thresholds ───────────────────────────────────────────
-  car_presence_threshold: "200"   # cm; car present when distance < this
+  # ── Door position calibration (HC-SR04 #1) ───────────────
+  # Measure and set these after mounting:
+  door_closed_distance: "30"    # cm — distance reading when door is fully CLOSED
+  door_open_distance: "200"     # cm — distance reading when door is fully OPEN
+  # If position reads inverted, swap the two values above.
+
+  # ── Car presence threshold (HC-SR04 #2) ──────────────────
+  car_presence_threshold: "100"  # cm — car present when ceiling sensor reads below this
 
 # ─────────────────────────────────────────────────────────────
 esphome:
@@ -111,13 +121,45 @@ sensor:
       name: "CC1101 LQI"
       internal: true
 
+  # HC-SR04 #1 — door position
   - platform: ultrasonic
     trigger_pin: ${ultrasonic_trigger_pin}
     echo_pin: ${ultrasonic_echo_pin}
-    name: "Garage Distance"
-    id: garage_distance
+    name: "Garage Door Distance"
+    id: garage_door_distance
     update_interval: 500ms
     unit_of_measurement: cm
+    internal: true    # raw distance; expose position % instead
+    filters:
+      - median:
+          window_size: 5
+          send_every: 3
+          send_first_at: 1
+
+  - platform: template
+    name: "Garage Door Position"
+    id: garage_door_position
+    unit_of_measurement: "%"
+    icon: mdi:garage
+    update_interval: 500ms
+    lambda: |-
+      float dist  = id(garage_door_distance).state;
+      float closed = ${door_closed_distance};
+      float open   = ${door_open_distance};
+      float pos = (dist - closed) / (open - closed) * 100.0f;
+      if (pos < 0.0f) pos = 0.0f;
+      if (pos > 100.0f) pos = 100.0f;
+      return pos;
+
+  # HC-SR04 #2 — car presence (ceiling mount, pointing down)
+  - platform: ultrasonic
+    trigger_pin: ${car_sensor_trigger_pin}
+    echo_pin: ${car_sensor_echo_pin}
+    name: "Car Sensor Distance"
+    id: car_sensor_distance
+    update_interval: 1s
+    unit_of_measurement: cm
+    internal: true    # raw distance; expose car_present binary sensor instead
     filters:
       - median:
           window_size: 5
@@ -126,21 +168,16 @@ sensor:
 
 # ─────────────────────────────────────────────────────────────
 binary_sensor:
+  # Car presence — HC-SR04 #2 on ceiling, pointing down
+  # Informational only: shows in HA as "Car Present" yes/no
   - platform: template
     name: "Car Present"
     id: car_present
     device_class: presence
     lambda: |-
-      if (id(garage_distance).state < ${car_presence_threshold}) {
-        return true;
-      }
-      return false;
-    on_press:
-      - switch.turn_on: garage_light
-      - script.stop: light_off_timer    # Cancel any pending off-timer
-    on_release:
-      - script.execute: light_off_timer # Start 2-min countdown
+      return id(car_sensor_distance).state < ${car_presence_threshold};
 
+  # Reed switch — door open/closed state (also drives light automation)
   - platform: gpio
     pin:
       number: ${door_sensor_pin}
@@ -154,6 +191,17 @@ binary_sensor:
     filters:
       - delayed_on: 100ms
       - delayed_off: 100ms
+    on_press:    # door opened
+      - switch.turn_on: garage_light
+      - script.stop: light_off_timer     # cancel any pending off-timer
+    on_release:  # door closed — start off-timer only if LD2410 also has no presence
+      - script.execute: light_off_timer
+      # When LD2410 is enabled, replace the above with:
+      # - if:
+      #     condition:
+      #       lambda: return !id(ld2410_presence).state;
+      #     then:
+      #       - script.execute: light_off_timer
 
 # ─────────────────────────────────────────────────────────────
 cover:
@@ -274,6 +322,19 @@ script:
 #     still_energy:
 #       name: "LD2410 Still Energy"
 #
-# To combine with HC-SR04 for car_present, change the car_present lambda to:
-#   return id(garage_distance).state < ${car_presence_threshold}
-#          || id(ld2410_presence).state;
+# After enabling LD2410, add movement-based light control to binary_sensor:
+#   - platform: ld2410
+#     has_target:
+#       name: "LD2410 Presence"
+#       id: ld2410_presence
+#       on_press:   # movement detected — keep light on
+#         - switch.turn_on: garage_light
+#         - script.stop: light_off_timer
+#       on_release: # no more movement
+#         - if:
+#             condition:
+#               lambda: return !id(door_open).state;
+#             then:
+#               - script.execute: light_off_timer
+#
+# Also update door_open on_release (see comment there) to check LD2410 state.
