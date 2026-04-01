@@ -133,6 +133,16 @@ esphome run esphome/smartest-garage.yaml
 > **Troubleshooting:**
 > - `No module named 'littlefs'` → `pip install littlefs-python`
 > - `No module named 'esptool'` → `pip install esptool`
-> - `No module named 'fatfs'` or `cannot import name 'create_extended_partition' from 'fatfs'` → do **not** `pip install fatfs`; PlatformIO bundles its own version. Run `platformio pkg update --global` to refresh it, or if the PyPI version is installed, remove it with `pip uninstall fatfs`.
+> - `No module named 'fatfs'` or `cannot import name 'create_extended_partition' from 'fatfs'` → PlatformIO bundles a newer fatfs than PyPI offers. Fix by installing the base package then copying the missing pure-Python files from PlatformIO's own environment into yours:
+>   ```bash
+>   pip install fatfs==0.1.2
+>
+>   # Find your fatfs site-packages dir:
+>   python3 -c "import fatfs, os; print(os.path.dirname(fatfs.__file__))"
+>
+>   # Copy the missing files (replace <your-fatfs-path> with the output above):
+>   cp ~/.platformio/penv/lib/python3.*/site-packages/fatfs/partition_extended.py <your-fatfs-path>/
+>   cp ~/.platformio/penv/lib/python3.*/site-packages/fatfs/esp32_wl.py <your-fatfs-path>/
+>   ```
 
 See [`docs/ha-automations/garage-door-notification.yaml`](docs/ha-automations/garage-door-notification.yaml) for the 10 pm open-door notification automation.
