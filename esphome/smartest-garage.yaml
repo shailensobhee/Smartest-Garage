@@ -59,7 +59,7 @@ wifi:
   password: !secret wifi_password
   ap:
     ssid: "${friendly_name} Fallback"
-    password: !secret ota_password
+    password: !secret ap_password
 
 captive_portal:
 
